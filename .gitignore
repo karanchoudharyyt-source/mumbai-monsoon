@@ -1,0 +1,9 @@
+node_modules/
+render.html
+demo-info.json
+soundtrack.wav
+frames/
+stills*/
+touch-shots/
+logs/
+out/

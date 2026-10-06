@@ -1,0 +1,21 @@
+{
+  "name": "mumbai-monsoon",
+  "version": "1.0.0",
+  "description": "An auto-rickshaw game set in Mumbai monsoon rain, in one HTML file. Built with Droid.",
+  "private": true,
+  "type": "commonjs",
+  "scripts": {
+    "build": "sh build.sh",
+    "serve": "python3 -m http.server 8765",
+    "test:touch": "node touch-test.js",
+    "render": "sh render-all.sh",
+    "audio": "node audio.js soundtrack.wav",
+    "encode": "sh encode.sh"
+  },
+  "dependencies": {
+    "three": "0.170.0"
+  },
+  "devDependencies": {
+    "puppeteer-core": "^23.11.1"
+  }
+}

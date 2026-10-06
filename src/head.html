@@ -1,0 +1,38 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Mumbai Monsoon</title>
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="description" content="Drive an auto-rickshaw through Mumbai monsoon rain at midnight. One HTML file, built with Droid.">
+<meta property="og:type" content="website">
+<meta property="og:title" content="Mumbai Monsoon: an auto-rickshaw game in one HTML file">
+<meta property="og:description" content="Drive through Mumbai rain at midnight. Every sign, raindrop and horn is code. Built with Droid.">
+<meta property="og:url" content="https://karanchoudharyyt-source.github.io/mumbai-monsoon/">
+<meta property="og:image" content="https://karanchoudharyyt-source.github.io/mumbai-monsoon/og.jpg">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="675">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="Mumbai Monsoon: an auto-rickshaw game in one HTML file">
+<meta name="twitter:description" content="Drive through Mumbai rain at midnight. Every sign, raindrop and horn is code. Built with Droid.">
+<meta name="twitter:image" content="https://karanchoudharyyt-source.github.io/mumbai-monsoon/og.jpg">
+<style>
+  html, body { margin: 0; height: 100%; background: #000; overflow: hidden; }
+  canvas { display: block; }
+  #hud { position: fixed; inset: 0; pointer-events: none; }
+  #help {
+    position: fixed; left: 50%; bottom: 16px; transform: translateX(-50%);
+    color: #d5dbe6; font: 14px Arial, sans-serif; background: rgba(0, 0, 0, .45);
+    padding: 6px 12px; border-radius: 6px; pointer-events: none;
+  }
+</style>
+</head>
+<body>
+<div id="help">W / ↑ drive · S / ↓ brake · A D / ← → steer · H horn · C camera · P autopilot</div>
+<script type="importmap">
+{ "imports": {
+  "three": "https://cdn.jsdelivr.net/npm/three@0.170.0/build/three.module.js",
+  "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.170.0/examples/jsm/"
+} }
+</script>
+<script type="module">
