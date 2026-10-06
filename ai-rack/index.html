@@ -1,0 +1,808 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Take apart an AI supercomputer</title>
+<link rel="icon" href="data:,">
+<meta name="description" content="Take apart an NVIDIA Vera Rubin NVL72 rack in your browser: rack, trays, superchip, GPU, and the path one token takes. One HTML file, built by Droid.">
+<meta property="og:title" content="Take apart an AI supercomputer">
+<meta property="og:description" content="72 GPUs, 36 CPUs, 1,296 chips. Pull the rack apart down to the silicon, then follow one token across the NVLink switches.">
+<meta property="og:image" content="https://karanchoudharyyt-source.github.io/mumbai-monsoon/ai-rack/og.jpg">
+<meta property="og:type" content="website">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="description" content="An interactive 3D NVIDIA Vera Rubin NVL72 rack you can take apart in your browser: trays, superchips, GPUs, HBM4 and the NVLink spine. One HTML file, built with Droid.">
+<style>
+:root { --g: #76b900; --ink: #e8ecef; --dim: #8b949c; }
+* { box-sizing: border-box; }
+html, body { margin: 0; height: 100%; overflow: hidden; background: #050607; color: var(--ink);
+  font-family: Inter, ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; }
+canvas#c { position: fixed; inset: 0; width: 100%; height: 100%; display: block; touch-action: none; }
+#labels { position: fixed; inset: 0; pointer-events: none; }
+.lbl { position: absolute; left: 0; top: 0; will-change: transform, opacity; opacity: 0; }
+.lbl .dot { position: absolute; left: -4px; top: -4px; width: 8px; height: 8px; border-radius: 50%;
+  background: var(--g); box-shadow: 0 0 10px var(--g); }
+.lbl .ln { position: absolute; left: 0; bottom: 0; width: 34px; height: 1px; background: rgba(118,185,0,.8);
+  transform-origin: 0 0; transform: rotate(-38deg); }
+.lbl .tx { position: absolute; left: 28px; bottom: 20px; white-space: nowrap; padding: 6px 10px; border-left: 2px solid var(--g);
+  background: rgba(8,10,12,.72); backdrop-filter: blur(6px); -webkit-backdrop-filter: blur(6px); }
+.lbl.left .ln { transform: rotate(-142deg); }
+.lbl.left .tx { left: auto; right: 28px; border-left: 0; border-right: 2px solid var(--g); text-align: right; }
+.lbl b { display: block; font-size: 14px; font-weight: 650; letter-spacing: .01em; }
+.lbl i { display: block; font-style: normal; font-size: 12px; color: var(--dim); margin-top: 2px; }
+
+#panel { position: fixed; left: 24px; top: 22px; width: 360px; padding: 18px 20px 16px; border-radius: 14px;
+  background: rgba(10,12,14,.7); border: 1px solid rgba(255,255,255,.07); backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px); }
+#panel .eye { font-size: 11px; letter-spacing: .18em; color: var(--g); font-weight: 700; }
+#panel h1 { font-size: 15px; font-weight: 600; margin: 4px 0 12px; color: var(--dim); }
+#panel h2 { font-size: 22px; line-height: 1.15; margin: 0 0 8px; }
+#panel p { font-size: 14px; line-height: 1.5; margin: 0 0 12px; color: #c7cdd2; }
+#specs { display: grid; grid-template-columns: auto 1fr; gap: 5px 14px; font-size: 13px; }
+#specs dt { color: var(--dim); } #specs dd { margin: 0; font-weight: 600; text-align: right; }
+
+#bar { position: fixed; left: 50%; bottom: 20px; transform: translateX(-50%); width: min(760px, calc(100% - 24px));
+  padding: 12px 14px; border-radius: 14px; background: rgba(10,12,14,.75); border: 1px solid rgba(255,255,255,.07);
+  backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px); }
+#steps { display: flex; gap: 6px; }
+#steps button { flex: 1; min-width: 0; padding: 9px 4px; border-radius: 9px; border: 1px solid rgba(255,255,255,.1);
+  background: rgba(255,255,255,.04); color: var(--ink); font-family: inherit; font-weight: 600; font-size: 13px; cursor: pointer; }
+#steps button.on { background: var(--g); border-color: var(--g); color: #0b0f04; }
+#steps button span { display: block; font-size: 10px; font-weight: 500; opacity: .65; }
+#sl { display: flex; align-items: center; gap: 12px; margin-top: 10px; font-size: 12px; color: var(--dim); }
+#sl input { flex: 1; accent-color: var(--g); }
+#hint { position: fixed; right: 22px; top: 24px; font-size: 12px; color: var(--dim); text-align: right; line-height: 1.6; }
+#foot { position: fixed; right: 22px; bottom: 8px; font-size: 10px; color: #59616a; max-width: 420px; text-align: right; }
+
+#cap { position: fixed; left: 50%; bottom: 74px; transform: translateX(-50%); text-align: center; display: none; width: 90%; }
+#cap .t { display: inline-block; font-size: 50px; font-weight: 750; letter-spacing: -.01em; line-height: 1.12;
+  padding: 10px 26px 14px; background: rgba(6,8,10,.62); border-radius: 14px; text-shadow: 0 2px 20px rgba(0,0,0,.6); }
+#cap .t em { color: var(--g); font-style: normal; }
+#cap .s { display: block; margin-top: 10px; font-size: 26px; font-weight: 500; color: #cfd5da; }
+#tag { position: fixed; left: 40px; top: 34px; display: none; font-size: 20px; letter-spacing: .16em; font-weight: 700; color: var(--g); }
+#tag span { display: block; font-size: 15px; letter-spacing: .04em; color: var(--dim); font-weight: 500; margin-top: 6px; }
+#prog { position: fixed; right: 40px; top: 40px; display: none; gap: 8px; }
+#prog i { display: block; width: 46px; height: 5px; border-radius: 3px; background: rgba(255,255,255,.16); overflow: hidden; }
+#prog i b { display: block; height: 100%; width: 0; background: var(--g); }
+body.demo #panel, body.demo #bar, body.demo #hint, body.demo #foot { display: none; }
+body.demo #cap, body.demo #tag { display: block; }
+body.demo #prog { display: flex; }
+body.demo .lbl b { font-size: 21px; } body.demo .lbl i { font-size: 16px; }
+body.demo .lbl .tx { padding: 8px 14px; }
+
+@media (max-width: 760px), (max-height: 500px) {
+  #panel { left: 10px; right: 10px; top: 10px; width: auto; padding: 12px 14px; }
+  #panel h1, #hint { display: none; }
+  #panel h2 { font-size: 18px; margin-bottom: 4px; }
+  #panel p { font-size: 13px; margin-bottom: 8px; }
+  #specs { display: none; }
+  #bar { bottom: max(10px, env(safe-area-inset-bottom)); padding: 8px; }
+  #steps button { font-size: 11px; padding: 8px 2px; } #steps button span { display: none; }
+  #foot { display: none; }
+  .lbl b { font-size: 12px; } .lbl i { font-size: 10px; } .lbl .tx { padding: 4px 7px; white-space: normal; width: max-content; max-width: 40vw; }
+}
+@media (max-height: 500px) and (orientation: landscape) {
+  #panel { right: auto; width: 300px; } #panel p { display: none; }
+  #bar { width: min(560px, calc(100% - 330px)); left: auto; right: 10px; transform: none; }
+}
+</style>
+</head>
+<body>
+<canvas id="c"></canvas>
+<div id="labels"></div>
+<div id="panel">
+  <div class="eye">TAKE IT APART</div>
+  <h1>How an AI supercomputer works</h1>
+  <h2 id="st"></h2>
+  <p id="sp"></p>
+  <dl id="specs"></dl>
+</div>
+<div id="hint">Drag to orbit · scroll or pinch to zoom<br>← → to step through</div>
+<div id="bar">
+  <div id="steps"></div>
+  <div id="sl"><span>Assembled</span><input id="range" type="range" min="0" max="5" step="0.001" value="0" aria-label="Take apart"><span>Token</span></div>
+</div>
+<div id="foot">Fan-made explainer of the NVIDIA Vera Rubin NVL72, built with Droid. Specs from NVIDIA's public spec sheet and technical blog; the 3D model is simplified. Not affiliated with NVIDIA.</div>
+<div id="tag">INSIDE AN AI SUPERCOMPUTER<span>NVIDIA Vera Rubin NVL72</span></div>
+<div id="prog"></div>
+<div id="cap"></div>
+
+<script>
+// ?local loads three.js from node_modules so offline renders don't depend on the CDN.
+(() => {
+  const base = new URLSearchParams(location.search).has('local') ? '/node_modules/three/' : 'https://cdn.jsdelivr.net/npm/three@0.170.0/';
+  const im = document.createElement('script');
+  im.type = 'importmap';
+  im.textContent = JSON.stringify({ imports: { three: base + 'build/three.module.js', 'three/addons/': base + 'examples/jsm/' } });
+  document.currentScript.after(im);
+})();
+</script>
+<script type="module">
+import * as THREE from 'three';
+import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+import { RoomEnvironment } from 'three/addons/environments/RoomEnvironment.js';
+import { RoundedBoxGeometry } from 'three/addons/geometries/RoundedBoxGeometry.js';
+import { EffectComposer } from 'three/addons/postprocessing/EffectComposer.js';
+import { RenderPass } from 'three/addons/postprocessing/RenderPass.js';
+import { UnrealBloomPass } from 'three/addons/postprocessing/UnrealBloomPass.js';
+import { OutputPass } from 'three/addons/postprocessing/OutputPass.js';
+
+const DEMO = new URLSearchParams(location.search).has('demo');
+if (DEMO) document.body.classList.add('demo');
+const G = 0x76b900;
+
+// ---------- content (every number is from NVIDIA's Vera Rubin NVL72 spec table or technical blog) ----------
+const STEPS = [
+  { name: 'Rack', sub: 'the whole thing', title: 'One rack that acts like one giant GPU',
+    text: 'This cabinet is a single AI supercomputer. Its 72 GPUs are wired together so tightly that software can treat them as one enormous GPU.',
+    specs: [['GPUs', '72 Rubin'], ['CPUs', '36 Vera'], ['Chips in the rack', '1,296'], ['AI compute', '3,600 PFLOPS NVFP4'], ['GPU memory', '20.7 TB HBM4']] },
+  { name: 'Trays', sub: 'pull it apart', title: 'It slides apart like drawers',
+    text: '18 compute trays do the math. The 9 switch trays in the middle are the switchboard that connects every GPU to every other GPU.',
+    specs: [['Compute trays', '18'], ['NVLink switch trays', '9'], ['Cooling', 'liquid, 45 °C water'], ['Fans in compute trays', 'none']] },
+  { name: 'Tray', sub: 'open one up', title: 'One compute tray',
+    text: 'There are no fans and no cables inside. Water flows through cold plates that sit on every big chip. Each tray holds two superchips plus the network cards that link the rack to the rest of the data center.',
+    specs: [['Superchips', '2'], ['GPUs', '4'], ['AI compute', '200 PFLOPS NVFP4'], ['Networking', 'ConnectX-9, BlueField-4']] },
+  { name: 'Superchip', sub: '1 CPU + 2 GPUs', title: 'The superchip',
+    text: 'One Vera CPU feeds two Rubin GPUs over a 1.8 TB/s link. CPU and GPU memory work as one shared pool, so data does not have to be copied back and forth.',
+    specs: [['Vera CPU', '88 cores, 176 threads'], ['CPU memory', 'up to 1.5 TB LPDDR5X'], ['CPU to GPU link', '1.8 TB/s NVLink-C2C'], ['GPUs', '2 Rubin']] },
+  { name: 'GPU', sub: 'dies + HBM4', title: 'The Rubin GPU',
+    text: 'Two compute dies hold 336 billion transistors. Around them sit stacks of HBM4, memory chips piled on top of each other so the data sits millimetres from the math.',
+    specs: [['Transistors', '336 billion'], ['Compute dies', '2, with 224 SMs'], ['Memory', '288 GB HBM4'], ['Memory bandwidth', '19.2 TB/s'], ['AI compute', '50 PFLOPS NVFP4']] },
+  { name: 'Token', sub: 'follow the data', title: 'Follow one piece of data',
+    text: 'While a model runs, GPUs swap data constantly. It leaves the tray through the NVLink spine at the back, passes through one of 36 switch chips, and lands on any other GPU in a single hop.',
+    specs: [['Switch chips', '36 NVLink 6'], ['Per GPU', '3 TB/s'], ['Whole rack', '216 TB/s'], ['Topology', 'all-to-all, 1 hop']] },
+];
+
+// ---------- deterministic helpers ----------
+let seed = 7;
+const rnd = () => ((seed = (seed * 16807) % 2147483647) / 2147483647);
+const clamp01 = (x) => Math.min(1, Math.max(0, x));
+const sm = (x) => x * x * (3 - 2 * x);
+const lerp = (a, b, t) => a + (b - a) * t;
+
+// ---------- renderer / scene ----------
+const canvas = document.getElementById('c');
+const renderer = new THREE.WebGLRenderer({ canvas, antialias: true, powerPreference: 'high-performance', preserveDrawingBuffer: DEMO });
+renderer.setPixelRatio(DEMO ? 1 : Math.min(devicePixelRatio, 2));
+renderer.toneMapping = THREE.ACESFilmicToneMapping;
+renderer.toneMappingExposure = 1.05;
+const scene = new THREE.Scene();
+scene.background = new THREE.Color(0x050607);
+scene.fog = new THREE.Fog(0x050607, 7, 16);
+const pmrem = new THREE.PMREMGenerator(renderer);
+scene.environment = pmrem.fromScene(new RoomEnvironment(), 0.04).texture;
+scene.environmentIntensity = 0.55;
+
+const camera = new THREE.PerspectiveCamera(35, 1, 0.004, 60);
+const key = new THREE.DirectionalLight(0xffffff, 1.6); key.position.set(3, 5, 4); scene.add(key);
+const rim = new THREE.DirectionalLight(0x9fd84a, 0.9); rim.position.set(-4, 2.5, -3); scene.add(rim);
+const fill = new THREE.DirectionalLight(0x8fb4ff, 0.35); fill.position.set(-3, 1, 4); scene.add(fill);
+scene.add(new THREE.AmbientLight(0xffffff, 0.08));
+
+// ---------- canvas textures ----------
+function tex(w, h, draw, srgb = true) {
+  const c = document.createElement('canvas'); c.width = w; c.height = h;
+  draw(c.getContext('2d'), w, h);
+  const t = new THREE.CanvasTexture(c);
+  if (srgb) t.colorSpace = THREE.SRGBColorSpace;
+  t.anisotropy = 8;
+  return t;
+}
+function rr(g, x, y, w, h, r) { g.beginPath(); g.roundRect(x, y, w, h, r); }
+const frontCompute = tex(1024, 104, (g, w, h) => {
+  g.fillStyle = '#2a2e33'; g.fillRect(0, 0, w, h);
+  g.fillStyle = '#1b1e22'; g.fillRect(0, 0, w, 6); g.fillRect(0, h - 6, w, 6);
+  for (const x of [14, w - 54]) { g.fillStyle = '#3d434a'; rr(g, x, 16, 40, h - 32, 6); g.fill(); g.fillStyle = '#16191c'; rr(g, x + 10, 28, 20, h - 56, 4); g.fill(); }
+  for (let i = 0; i < 8; i++) { const x = 92 + i * 62; g.fillStyle = '#0d0f11'; rr(g, x, 26, 50, 52, 4); g.fill(); g.strokeStyle = '#4b5259'; g.lineWidth = 2; g.stroke(); g.fillStyle = '#23272b'; g.fillRect(x + 8, 40, 34, 24); }
+  g.fillStyle = '#76b900'; g.fillRect(612, 22, 6, h - 44);
+  g.fillStyle = '#9aa1a8'; g.font = '600 22px sans-serif'; g.fillText('COMPUTE', 636, 48); g.fillStyle = '#5f666d'; g.font = '18px sans-serif'; g.fillText('2x VERA RUBIN', 636, 74);
+  for (let i = 0; i < 2; i++) { g.fillStyle = '#76b900'; g.beginPath(); g.arc(860 + i * 26, 52, 6, 0, 7); g.fill(); }
+  g.fillStyle = '#0d0f11'; rr(g, 912, 30, 46, 44, 4); g.fill();
+});
+const frontComputeE = tex(1024, 104, (g, w, h) => {
+  g.fillStyle = '#000'; g.fillRect(0, 0, w, h);
+  g.fillStyle = '#76b900'; g.fillRect(612, 22, 6, h - 44);
+  for (let i = 0; i < 2; i++) { g.beginPath(); g.arc(860 + i * 26, 52, 6, 0, 7); g.fill(); }
+});
+const frontSwitch = tex(1024, 104, (g, w, h) => {
+  g.fillStyle = '#23272b'; g.fillRect(0, 0, w, h);
+  g.fillStyle = '#16191c'; g.fillRect(0, 0, w, 6); g.fillRect(0, h - 6, w, 6);
+  for (let x = 70; x < 560; x += 14) for (let y = 22; y < h - 18; y += 14) { g.fillStyle = '#121416'; g.beginPath(); g.arc(x, y, 4.2, 0, 7); g.fill(); }
+  g.fillStyle = '#76b900'; g.fillRect(600, 22, 6, h - 44);
+  g.fillStyle = '#9aa1a8'; g.font = '600 22px sans-serif'; g.fillText('NVLINK SWITCH', 624, 48); g.fillStyle = '#5f666d'; g.font = '18px sans-serif'; g.fillText('4x NVLINK 6', 624, 74);
+  for (let i = 0; i < 4; i++) { g.fillStyle = '#0d0f11'; rr(g, 830 + i * 40, 34, 30, 36, 3); g.fill(); }
+  for (const x of [14, w - 54]) { g.fillStyle = '#3d434a'; rr(g, x, 16, 40, h - 32, 6); g.fill(); }
+});
+const frontSwitchE = tex(1024, 104, (g, w, h) => { g.fillStyle = '#000'; g.fillRect(0, 0, w, h); g.fillStyle = '#76b900'; g.fillRect(600, 22, 6, h - 44); });
+const frontPower = tex(1024, 104, (g, w, h) => {
+  g.fillStyle = '#1e2125'; g.fillRect(0, 0, w, h);
+  for (let i = 0; i < 6; i++) {
+    const x = 18 + i * 166; g.fillStyle = '#2b3035'; rr(g, x, 10, 154, h - 20, 6); g.fill();
+    for (let yy = 22; yy < h - 18; yy += 10) for (let xx = x + 12; xx < x + 120; xx += 10) { g.fillStyle = '#121416'; g.fillRect(xx, yy, 6, 6); }
+    g.fillStyle = '#76b900'; g.beginPath(); g.arc(x + 138, 26, 4, 0, 7); g.fill();
+  }
+});
+const frontPowerE = tex(1024, 104, (g, w, h) => { g.fillStyle = '#000'; g.fillRect(0, 0, w, h); for (let i = 0; i < 6; i++) { g.fillStyle = '#76b900'; g.beginPath(); g.arc(18 + i * 166 + 138, 26, 4, 0, 7); g.fill(); } });
+const pcbTex = tex(1024, 1024, (g, w, h) => {
+  g.fillStyle = '#0c2a20'; g.fillRect(0, 0, w, h);
+  seed = 11;
+  g.strokeStyle = 'rgba(190,160,70,.35)'; g.lineWidth = 2;
+  for (let i = 0; i < 260; i++) {
+    let x = rnd() * w, y = rnd() * h; g.beginPath(); g.moveTo(x, y);
+    for (let k = 0; k < 4; k++) { if (rnd() < 0.5) x += (rnd() - 0.5) * 220; else y += (rnd() - 0.5) * 220; g.lineTo(x, y); }
+    g.stroke();
+  }
+  for (let i = 0; i < 900; i++) { g.fillStyle = rnd() < 0.5 ? '#c9b26a' : '#1a1c1e'; g.fillRect(rnd() * w, rnd() * h, 5, 3); }
+});
+pcbTex.wrapS = pcbTex.wrapT = THREE.RepeatWrapping;
+function dieDraw(emissive) {
+  return (g, w, h) => {
+    g.fillStyle = emissive ? '#000' : '#1a2027'; g.fillRect(0, 0, w, h);
+    const cols = 8, rows = 14, pad = 18, gw = (w - pad * 2) / cols, gh = (h - pad * 2) / rows;
+    seed = 5;
+    for (let r = 0; r < rows; r++) for (let c = 0; c < cols; c++) {
+      const x = pad + c * gw, y = pad + r * gh;
+      if (emissive) { g.fillStyle = `rgba(118,185,0,${0.25 + rnd() * 0.5})`; g.fillRect(x + 4, y + 4, gw - 8, gh - 8); }
+      else {
+        const gr = g.createLinearGradient(x, y, x + gw, y + gh); gr.addColorStop(0, '#3a4652'); gr.addColorStop(1, '#262f38');
+        g.fillStyle = gr; g.fillRect(x + 3, y + 3, gw - 6, gh - 6);
+        g.fillStyle = 'rgba(160,120,220,.25)'; g.fillRect(x + 8, y + 8, gw * 0.45, gh * 0.4);
+        g.fillStyle = 'rgba(80,190,200,.2)'; g.fillRect(x + gw * 0.55, y + gh * 0.55, gw * 0.35, gh * 0.3);
+      }
+    }
+    if (!emissive) { g.strokeStyle = '#59636d'; g.lineWidth = 6; g.strokeRect(6, 6, w - 12, h - 12); }
+  };
+}
+const dieTex = tex(512, 768, dieDraw(false)), dieTexE = tex(512, 768, dieDraw(true));
+const floorTex = tex(512, 512, (g, w, h) => {
+  const gr = g.createRadialGradient(w / 2, h / 2, 0, w / 2, h / 2, w / 2);
+  gr.addColorStop(0, 'rgba(0,0,0,.85)'); gr.addColorStop(0.35, 'rgba(0,0,0,.5)'); gr.addColorStop(1, 'rgba(0,0,0,0)');
+  g.fillStyle = gr; g.fillRect(0, 0, w, h);
+});
+const gridTex = tex(1024, 1024, (g, w, h) => {
+  g.fillStyle = '#000'; g.fillRect(0, 0, w, h);
+  g.strokeStyle = 'rgba(118,185,0,.22)'; g.lineWidth = 2;
+  for (let i = 0; i <= 32; i++) { const p = (i / 32) * w; g.beginPath(); g.moveTo(p, 0); g.lineTo(p, h); g.stroke(); g.beginPath(); g.moveTo(0, p); g.lineTo(w, p); g.stroke(); }
+  const gr = g.createRadialGradient(w / 2, h / 2, 0, w / 2, h / 2, w / 2);
+  gr.addColorStop(0, 'rgba(0,0,0,0)'); gr.addColorStop(1, 'rgba(0,0,0,1)');
+  g.fillStyle = gr; g.fillRect(0, 0, w, h);
+});
+const glowTex = tex(128, 128, (g, w) => {
+  const gr = g.createRadialGradient(w / 2, w / 2, 0, w / 2, w / 2, w / 2);
+  gr.addColorStop(0, 'rgba(255,255,255,1)'); gr.addColorStop(0.2, 'rgba(200,255,120,.9)'); gr.addColorStop(0.5, 'rgba(118,185,0,.35)'); gr.addColorStop(1, 'rgba(118,185,0,0)');
+  g.fillStyle = gr; g.fillRect(0, 0, w, w);
+});
+
+// ---------- materials ----------
+const M = {
+  frame: new THREE.MeshStandardMaterial({ color: 0x15181b, metalness: 0.85, roughness: 0.38 }),
+  side: new THREE.MeshStandardMaterial({ color: 0x3a3f45, metalness: 0.8, roughness: 0.42 }),
+  lid: new THREE.MeshStandardMaterial({ color: 0x4a5057, metalness: 0.85, roughness: 0.35 }),
+  pcb: new THREE.MeshStandardMaterial({ map: pcbTex, metalness: 0.2, roughness: 0.6 }),
+  board: new THREE.MeshStandardMaterial({ color: 0x0f3a2b, map: pcbTex, metalness: 0.25, roughness: 0.55 }),
+  copper: new THREE.MeshStandardMaterial({ color: 0xc98c5a, metalness: 1, roughness: 0.28 }),
+  nickel: new THREE.MeshStandardMaterial({ color: 0xb9bec4, metalness: 1, roughness: 0.22 }),
+  substrate: new THREE.MeshStandardMaterial({ color: 0x23302a, metalness: 0.3, roughness: 0.5 }),
+  interposer: new THREE.MeshStandardMaterial({ color: 0x6b7178, metalness: 0.7, roughness: 0.3 }),
+  die: new THREE.MeshStandardMaterial({ map: dieTex, emissiveMap: dieTexE, emissive: 0xffffff, emissiveIntensity: 0.25, metalness: 0.6, roughness: 0.25 }),
+  hbm: new THREE.MeshStandardMaterial({ color: 0x8e959d, metalness: 0.9, roughness: 0.25 }),
+  hbmBase: new THREE.MeshStandardMaterial({ color: 0x3b4148, metalness: 0.6, roughness: 0.4 }),
+  cpu: new THREE.MeshStandardMaterial({ color: 0x9aa0a6, metalness: 1, roughness: 0.2 }),
+  dram: new THREE.MeshStandardMaterial({ color: 0x15181b, metalness: 0.4, roughness: 0.5 }),
+  nic: new THREE.MeshStandardMaterial({ color: 0x1a1d20, metalness: 0.6, roughness: 0.45 }),
+  fin: new THREE.MeshStandardMaterial({ color: 0x8c9198, metalness: 1, roughness: 0.35 }),
+  pipeIn: new THREE.MeshStandardMaterial({ color: 0x2f7fb8, metalness: 0.5, roughness: 0.35 }),
+  pipeOut: new THREE.MeshStandardMaterial({ color: 0xb8662f, metalness: 0.5, roughness: 0.35 }),
+  hose: new THREE.MeshStandardMaterial({ color: 0x202326, metalness: 0.2, roughness: 0.7 }),
+  spine: new THREE.MeshStandardMaterial({ color: 0xb87a4a, metalness: 0.9, roughness: 0.35, emissive: G, emissiveIntensity: 0 }),
+  glowLine: new THREE.LineBasicMaterial({ color: 0x9be03a, transparent: true, opacity: 0, blending: THREE.AdditiveBlending, depthWrite: false }),
+  c2c: new THREE.MeshBasicMaterial({ color: 0xa8f040, transparent: true, opacity: 0, blending: THREE.AdditiveBlending, depthWrite: false }),
+};
+function frontMats(map, emap) {
+  return new THREE.MeshStandardMaterial({ map, emissiveMap: emap, emissive: 0xffffff, emissiveIntensity: 1.4, metalness: 0.6, roughness: 0.45 });
+}
+function fadeable(list, o) {
+  for (const m of list) { m.opacity = o; m.transparent = o < 0.999; m.depthWrite = o > 0.6; }
+}
+
+// ---------- rack ----------
+const rack = new THREE.Group(); scene.add(rack);
+const RW = 0.6, RD = 1.2, RH = 2.2, U = 0.058, TOP = 2.0;
+const frameMat = M.frame.clone();
+{
+  const post = (x, z) => { const m = new THREE.Mesh(new THREE.BoxGeometry(0.04, RH, 0.04), frameMat); m.position.set(x, RH / 2, z); rack.add(m); };
+  for (const x of [-RW / 2 + 0.02, RW / 2 - 0.02]) for (const z of [-RD / 2 + 0.02, RD / 2 - 0.02]) post(x, z);
+  for (const y of [0.1, RH - 0.06]) {
+    const cap = new THREE.Mesh(new THREE.BoxGeometry(RW, y < 1 ? 0.2 : 0.12, RD), frameMat); cap.position.set(0, y, 0); rack.add(cap);
+  }
+  for (const x of [-1, 1]) {
+    const panel = new THREE.Mesh(new THREE.BoxGeometry(0.008, RH - 0.32, RD - 0.08), frameMat); panel.position.set(x * (RW / 2 - 0.004), RH / 2 + 0.03, 0); rack.add(panel);
+  }
+}
+const frameMats = [frameMat];
+
+// slots, top to bottom: 2 power, 10 compute, 9 switch, 8 compute, 2 power
+const SLOTS = [];
+const layout = [['P', 2], ['C', 10], ['S', 9], ['C', 8], ['P', 2]];
+for (const [k, n] of layout) for (let i = 0; i < n; i++) SLOTS.push(k);
+const slotY = (i) => TOP - U * (i + 0.5);
+const CENTER_Y = (slotY(0) + slotY(SLOTS.length - 1)) / 2;
+const TW = 0.52, TD = 1.04, TH = 0.05;
+const HERO = 5;                       // a compute tray in the upper group
+const TARGET = SLOTS.length - 6;      // a compute tray in the lower group (token destination)
+
+const shellMats = { C: [], S: [], P: [] };
+const trays = [];
+const sideGeo = new THREE.BoxGeometry(TW, TH, TD);
+function makeShellMaterials(kind) {
+  const side = M.side.clone();
+  const front = kind === 'C' ? frontMats(frontCompute, frontComputeE) : kind === 'S' ? frontMats(frontSwitch, frontSwitchE) : frontMats(frontPower, frontPowerE);
+  return [side, side, side, side, front, side];
+}
+const shared = { C: makeShellMaterials('C'), S: makeShellMaterials('S'), P: makeShellMaterials('P') };
+for (const k of 'CSP') shellMats[k] = [shared[k][0], shared[k][4]];
+seed = 3;
+SLOTS.forEach((kind, i) => {
+  const g = new THREE.Group();
+  const isHero = i === HERO;
+  const mats = isHero ? makeShellMaterials('C') : shared[kind];
+  const shell = new THREE.Mesh(sideGeo, mats);
+  g.add(shell);
+  g.position.set(0, slotY(i), 0);
+  rack.add(g);
+  trays.push({ g, i, kind, shell, mats, base: slotY(i), stag: 0.12 + 0.34 * ((i * 7) % 5) / 4, side: (i % 2 ? 1 : -1) });
+});
+const hero = trays[HERO];
+const heroMats = [hero.mats[0], hero.mats[4]];
+
+// ---------- hero tray internals (tray-local coordinates; tray floor at y = -TH/2) ----------
+// The hero shell becomes an open tub: its top face is a separate lid that lifts away.
+hero.shell.geometry = new THREE.BoxGeometry(TW, 0.004, TD); hero.shell.position.y = -TH / 2 + 0.002;
+const heroWalls = [];
+{
+  const wm = hero.mats[0];
+  const mk = (w, h, d, x, y, z, m = wm) => { const b = new THREE.Mesh(new THREE.BoxGeometry(w, h, d), m); b.position.set(x, y, z); hero.g.add(b); return b; };
+  heroWalls.push(mk(0.004, TH, TD, -TW / 2 + 0.002, 0, 0), mk(0.004, TH, TD, TW / 2 - 0.002, 0, 0), mk(TW, TH, 0.004, 0, 0, -TD / 2 + 0.002));
+  const front = new THREE.Mesh(new THREE.BoxGeometry(TW, TH, 0.006), [wm, wm, wm, wm, hero.mats[4], wm]);
+  front.position.set(0, 0, TD / 2 - 0.003); hero.g.add(front);
+}
+const lid = new THREE.Mesh(new THREE.BoxGeometry(TW, 0.003, TD), M.lid.clone()); lid.position.y = TH / 2 - 0.0015; hero.g.add(lid);
+const internals = new THREE.Group(); hero.g.add(internals);
+const FLOOR = -TH / 2 + 0.004;
+{
+  const pcb = new THREE.Mesh(new THREE.BoxGeometry(TW - 0.02, 0.002, TD - 0.03), M.pcb); pcb.position.y = FLOOR + 0.001; internals.add(pcb);
+}
+// network cards at the front: 4 ConnectX-9 SuperNICs + 1 BlueField-4 DPU
+const nics = [];
+for (let i = 0; i < 4; i++) {
+  const n = new THREE.Group();
+  const card = new THREE.Mesh(new THREE.BoxGeometry(0.07, 0.003, 0.11), M.board); n.add(card);
+  const hs = new THREE.Mesh(new THREE.BoxGeometry(0.05, 0.014, 0.06), M.fin); hs.position.set(0, 0.009, -0.005); n.add(hs);
+  for (let f = 0; f < 9; f++) { const fin = new THREE.Mesh(new THREE.BoxGeometry(0.001, 0.004, 0.06), M.nic); fin.position.set(-0.022 + f * 0.0055, 0.018, -0.005); n.add(fin); }
+  n.position.set(-0.195 + i * 0.13 - (i > 1 ? 0 : 0), FLOOR + 0.004, 0.41);
+  if (i === 1 || i === 2) n.position.x += i === 1 ? -0.02 : 0.02;
+  internals.add(n); nics.push(n);
+}
+const bluefield = new THREE.Group();
+{
+  const card = new THREE.Mesh(new THREE.BoxGeometry(0.1, 0.003, 0.13), M.board); bluefield.add(card);
+  const chip = new THREE.Mesh(new RoundedBoxGeometry(0.045, 0.008, 0.045, 2, 0.002), M.nickel); chip.position.y = 0.006; bluefield.add(chip);
+  bluefield.position.set(0, FLOOR + 0.004, 0.25); internals.add(bluefield);
+}
+// superchips
+function makeGPU() {
+  const gpu = new THREE.Group();
+  const sub = new THREE.Mesh(new RoundedBoxGeometry(0.09, 0.004, 0.09, 2, 0.0012), M.substrate); sub.position.y = 0.002; gpu.add(sub);
+  const ip = new THREE.Mesh(new THREE.BoxGeometry(0.08, 0.0012, 0.064), M.interposer); ip.position.y = 0.0046; gpu.add(ip);
+  const dies = [];
+  for (const x of [-0.0135, 0.0135]) {
+    const d = new THREE.Mesh(new THREE.BoxGeometry(0.025, 0.0016, 0.034), [M.interposer, M.interposer, M.die, M.interposer, M.interposer, M.interposer]);
+    d.position.set(x, 0.006, 0); d.userData.y0 = 0.006; gpu.add(d); dies.push(d);
+  }
+  const stacks = [];
+  for (const sx of [-1, 1]) for (const z of [-0.024, -0.008, 0.008, 0.024]) {
+    const st = new THREE.Group(); st.position.set(sx * 0.0335, 0.0052, z);
+    const base = new THREE.Mesh(new THREE.BoxGeometry(0.011, 0.0008, 0.0135), M.hbmBase); base.position.y = 0.0004; st.add(base);
+    const layers = [];
+    for (let l = 0; l < 12; l++) { const s = new THREE.Mesh(new THREE.BoxGeometry(0.011, 0.00042, 0.0135), M.hbm); st.add(s); layers.push(s); }
+    st.userData.layers = layers; gpu.add(st); stacks.push(st);
+  }
+  gpu.userData = { dies, stacks };
+  return gpu;
+}
+function makeColdPlate(w, d) {
+  const p = new THREE.Group();
+  const body = new THREE.Mesh(new RoundedBoxGeometry(w, 0.01, d, 2, 0.002), M.copper); p.add(body);
+  const top = new THREE.Mesh(new RoundedBoxGeometry(w * 0.8, 0.003, d * 0.5, 2, 0.001), M.nickel); top.position.y = 0.006; p.add(top);
+  for (const x of [-w * 0.28, w * 0.28]) { const port = new THREE.Mesh(new THREE.CylinderGeometry(0.004, 0.004, 0.008, 16), M.nickel); port.position.set(x, 0.008, -d * 0.35); p.add(port); }
+  return p;
+}
+const superchips = [];
+for (const sx of [-1, 1]) {
+  const sc = new THREE.Group();
+  const board = new THREE.Mesh(new THREE.BoxGeometry(0.2, 0.003, 0.5), M.board); sc.add(board);
+  const cpu = new THREE.Group();
+  { const s = new THREE.Mesh(new RoundedBoxGeometry(0.06, 0.003, 0.06, 2, 0.001), M.substrate); s.position.y = 0.0015; cpu.add(s);
+    const ih = new THREE.Mesh(new RoundedBoxGeometry(0.044, 0.003, 0.044, 2, 0.001), M.cpu); ih.position.y = 0.0045; cpu.add(ih); }
+  cpu.position.set(0, 0.0015, 0.165); sc.add(cpu);
+  const socamm = [];
+  for (const x of [-0.065, -0.05, 0.05, 0.065]) { const m = new THREE.Mesh(new THREE.BoxGeometry(0.01, 0.004, 0.07), M.dram); m.position.set(x, 0.0035, 0.165); sc.add(m); socamm.push(m); }
+  const gpus = [makeGPU(), makeGPU()];
+  gpus[0].position.set(0, 0.0015, 0.03); gpus[1].position.set(0, 0.0015, -0.115); gpus.forEach((g) => sc.add(g));
+  const plates = [makeColdPlate(0.05, 0.05), makeColdPlate(0.088, 0.088), makeColdPlate(0.088, 0.088)];
+  const plateY = [0.013, 0.014, 0.014];
+  plates[0].position.set(0, plateY[0], 0.165); plates[1].position.set(0, plateY[1], 0.03); plates[2].position.set(0, plateY[2], -0.115);
+  plates.forEach((p, k) => { p.userData.y0 = plateY[k]; sc.add(p); });
+  // NVLink-C2C glow strips between the CPU and each GPU
+  const c2c = [];
+  for (const [z0, z1] of [[0.135, 0.075], [0.135, -0.07]]) {
+    const len = Math.abs(z0 - z1);
+    for (const dx of [-0.012, 0.012]) {
+      const b = new THREE.Mesh(new THREE.BoxGeometry(0.003, 0.0015, len), M.c2c); b.position.set(dx + (z1 < 0 ? 0.03 * Math.sign(dx) : 0), 0.0035, (z0 + z1) / 2); sc.add(b); c2c.push(b);
+    }
+  }
+  sc.position.set(sx * 0.12, FLOOR + 0.0035, -0.17);
+  sc.userData = { cpu, gpus, plates, socamm, board, c2c, x0: sx * 0.12 };
+  internals.add(sc); superchips.push(sc);
+}
+// cold-plate hoses to the rear manifold
+{
+  for (const sc of superchips) {
+    for (const p of sc.userData.plates) {
+      for (const dx of [-0.01, 0.01]) {
+        const a = new THREE.Vector3(sc.position.x + p.position.x + dx, FLOOR + 0.02, sc.position.z + p.position.z - 0.03);
+        const b = new THREE.Vector3(sc.position.x + dx * 3 + (dx > 0 ? 0.06 : -0.06), FLOOR + 0.03, -TD / 2 + 0.04);
+        const mid = a.clone().lerp(b, 0.5); mid.y += 0.008;
+        const h = new THREE.Mesh(new THREE.TubeGeometry(new THREE.CatmullRomCurve3([a, mid, b]), 16, 0.0028, 8), dx > 0 ? M.pipeOut : M.pipeIn);
+        h.userData.plate = p; h.userData.sc = sc;
+        internals.add(h);
+      }
+    }
+  }
+  const man = new THREE.Mesh(new THREE.BoxGeometry(TW - 0.06, 0.02, 0.03), M.nickel); man.position.set(0, FLOOR + 0.012, -TD / 2 + 0.03); internals.add(man);
+}
+// hoses don't follow the exploded plates, so they fade out while the superchip lifts
+const hoses = internals.children.filter((c) => c.userData.plate);
+const hoseMats = [M.pipeIn, M.pipeOut];
+
+// ---------- rack rear: NVLink spine, manifolds ----------
+const spine = new THREE.Group(); rack.add(spine);
+{
+  const yTop = slotY(2) + U / 2, yBot = slotY(SLOTS.length - 3) - U / 2;
+  for (let i = 0; i < 26; i++) {
+    const x = -0.22 + (i / 25) * 0.44;
+    const c = new THREE.Mesh(new THREE.CylinderGeometry(0.004, 0.004, yTop - yBot, 6), M.spine);
+    c.position.set(x, (yTop + yBot) / 2, -RD / 2 + 0.035); spine.add(c);
+  }
+  for (const [x, m] of [[-0.27, M.pipeIn], [0.27, M.pipeOut]]) {
+    const p = new THREE.Mesh(new THREE.CylinderGeometry(0.018, 0.018, 1.9, 16), m); p.position.set(x, 1.08, -RD / 2 + 0.03); rack.add(p);
+  }
+}
+// all-to-all fabric lines: every compute tray to every switch tray, bowing out behind the rack
+const fabric = new THREE.Group(); rack.add(fabric);
+const computeSlots = SLOTS.map((k, i) => (k === 'C' ? i : -1)).filter((i) => i >= 0);
+const switchSlots = SLOTS.map((k, i) => (k === 'S' ? i : -1)).filter((i) => i >= 0);
+{
+  const pts = [];
+  computeSlots.forEach((ci, a) => switchSlots.forEach((si, b) => {
+    const x = -0.21 + ((a * 9 + b) % 27) / 26 * 0.42;
+    const y0 = slotY(ci), y1 = slotY(si), zb = -TD / 2;
+    const bow = 0.06 + 0.18 * Math.abs(y0 - y1);
+    let prev = null;
+    for (let k = 0; k <= 12; k++) {
+      const u = k / 12;
+      const p = new THREE.Vector3(x, lerp(y0, y1, sm(u)), zb - bow * Math.sin(Math.PI * u));
+      if (prev) pts.push(prev, p);
+      prev = p;
+    }
+  }));
+  fabric.add(new THREE.LineSegments(new THREE.BufferGeometry().setFromPoints(pts), M.glowLine));
+}
+// the token's path: hero GPU -> rear -> spine -> switch tray -> spine -> target GPU
+const token = new THREE.Group(); scene.add(token);
+const tokenSprites = [];
+for (let i = 0; i < 18; i++) {
+  const s = new THREE.Sprite(new THREE.SpriteMaterial({ map: glowTex, color: 0xffffff, transparent: true, depthWrite: false, depthTest: false, blending: THREE.AdditiveBlending }));
+  token.add(s); tokenSprites.push(s);
+}
+const pathMat = new THREE.MeshBasicMaterial({ color: 0xb6ff4a, transparent: true, opacity: 0, blending: THREE.AdditiveBlending, depthWrite: false });
+let tokenCurve, pathMesh;
+const targetGlow = new THREE.Mesh(new THREE.BoxGeometry(TW + 0.01, TH + 0.01, TD + 0.01), new THREE.MeshBasicMaterial({ color: G, transparent: true, opacity: 0, blending: THREE.AdditiveBlending, depthWrite: false }));
+scene.add(targetGlow);
+
+// ---------- floor ----------
+const floor = new THREE.Mesh(new THREE.PlaneGeometry(14, 14), new THREE.MeshBasicMaterial({ map: gridTex, transparent: true, opacity: 0.55, depthWrite: false, blending: THREE.AdditiveBlending }));
+floor.rotation.x = -Math.PI / 2; scene.add(floor);
+const shadow = new THREE.Mesh(new THREE.PlaneGeometry(2.2, 2.6), new THREE.MeshBasicMaterial({ map: floorTex, transparent: true, depthWrite: false }));
+shadow.rotation.x = -Math.PI / 2; shadow.position.y = 0.002; scene.add(shadow);
+
+// ---------- pose: one continuous value s (0 rack, 1 trays, 2 tray, 3 superchip, 4 GPU, 5 token) ----------
+const PLATFORM = new THREE.Vector3(0, 1.0, 0.95);
+const seg = (s, a, b) => sm(clamp01((s - a) / (b - a)));
+const tmpV = new THREE.Vector3();
+function applyPose(s) {
+  const back = seg(s, 4, 5), r = 1 - back;
+  const e1 = seg(s, 0, 1) * r, e2 = seg(s, 1, 2) * r, e3 = seg(s, 2, 3) * r, e4 = seg(s, 3, 4) * r;
+  const xr = seg(s, 4.4, 5);
+  const spread = 1 + 0.55 * e1;
+  for (const t of trays) {
+    const y = CENTER_Y + (t.base - CENTER_Y) * (spread + (t === hero ? 0 : 0.9 * e2));
+    const z = t.stag * e1;
+    if (t === hero) {
+      tmpV.set(0, y, z).lerp(PLATFORM, e2);
+      t.g.position.copy(tmpV);
+      t.g.rotation.y = -0.35 * e2;
+    } else {
+      t.g.position.set(0, y, z + 0.4 * e2);
+    }
+  }
+  fadeable(shellMats.C.concat(shellMats.S, shellMats.P), (1 - e2) * (1 - 0.8 * xr));
+  for (const k of 'CSP') { const o = (1 - e2) * (1 - 0.8 * xr); for (const t of trays) if (t !== hero && t.kind === k) t.g.visible = o > 0.01; }
+  fadeable(frameMats, (1 - 0.82 * e1) * (1 - e2) * (1 - 0.55 * xr));
+  rack.children.forEach((c) => { if (c.material === frameMat) c.visible = frameMat.opacity > 0.01; });
+  fadeable(heroMats, 1 - 0.75 * xr);
+  // lid lifts off when the tray is opened
+  lid.position.y = TH / 2 - 0.0015 + 0.5 * e2;
+  lid.position.z = -0.45 * e2;
+  lid.rotation.x = -0.5 * e2;
+  fadeable([lid.material], clamp01(1 - 1.4 * e2) * (1 - 0.8 * xr));
+  lid.visible = lid.material.opacity > 0.01;
+  // superchip lifts out and tilts toward the viewer; its cold plates float above it
+  const sc = superchips[0];
+  sc.position.y = FLOOR + 0.0035 + 0.16 * e3;
+  sc.position.z = -0.17 + 0.12 * e3;
+  sc.rotation.x = 0.4 * e3;
+  sc.userData.plates.forEach((p, k) => {
+    p.position.y = p.userData.y0 + 0.055 * e3 + (k === 1 ? 0.4 * e4 : 0.02 * e4);
+  });
+  const plateMat = M.copper; void plateMat;
+  fadeable(hoseMats, 1 - e3);
+  for (const h of hoses) h.visible = M.pipeIn.opacity > 0.01;
+  for (const m of sc.userData.c2c) void m;
+  M.c2c.opacity = 0.9 * clamp01(e3 * 1.4 - 0.3) * (1 - e4);
+  // the GPU: HBM layers separate, dies rise and light up
+  for (const scx of superchips) for (const g of scx.userData.gpus) {
+    const hot = g === superchips[0].userData.gpus[0] ? e4 : 0;
+    g.userData.dies.forEach((d) => { d.position.y = d.userData.y0 + 0.006 * hot; });
+    g.userData.stacks.forEach((st, si) => {
+      st.position.y = 0.0052 + 0.004 * hot;
+      st.userData.layers.forEach((l, li) => { l.position.y = 0.0011 + li * (0.00046 + 0.00045 * hot) + 0.0004 * hot * (si % 4) / 3; });
+    });
+  }
+  M.die.emissiveIntensity = 0.25 + 1.6 * e4;
+  // token stage
+  M.glowLine.opacity = 0.32 * seg(s, 4.55, 5);
+  M.spine.emissiveIntensity = 0.12 * seg(s, 4.5, 5);
+  pathMat.opacity = 0.55 * seg(s, 4.7, 5);
+  token.visible = s > 4.85;
+}
+
+// ---------- camera poses per step (computed from the posed model) ----------
+const POSES = [];
+function worldOf(obj) { obj.updateWorldMatrix(true, false); return new THREE.Vector3().setFromMatrixPosition(obj.matrixWorld); }
+function buildPoses() {
+  const mk = (target, off) => ({ t: target.clone(), p: target.clone().add(off) });
+  POSES[0] = mk(new THREE.Vector3(0, 1.12, 0.05), new THREE.Vector3(1.6, 0.5, 3.4));
+  POSES[1] = mk(new THREE.Vector3(0, 1.08, 0.25), new THREE.Vector3(2.6, 0.3, 4.9));
+  applyPose(2); POSES[2] = mk(worldOf(hero.g).add(new THREE.Vector3(0, 0.02, 0)), new THREE.Vector3(0.62, 0.72, 0.95));
+  applyPose(3); const scw = worldOf(superchips[0]); POSES[3] = mk(scw, new THREE.Vector3(0.2, 0.34, 0.5));
+  applyPose(4); const gw = worldOf(superchips[0].userData.gpus[0]); POSES[4] = mk(gw.add(new THREE.Vector3(0, 0.008, 0)), new THREE.Vector3(0.05, 0.17, 0.1));
+  POSES[5] = mk(new THREE.Vector3(0, 1.12, -0.3), new THREE.Vector3(-1.9, 0.45, -2.9));
+  // token path at the assembled pose
+  applyPose(5);
+  const g0 = worldOf(superchips[0].userData.gpus[0]);
+  const tY = slotY(TARGET), sY = slotY(switchSlots[4]), hY = slotY(HERO), zb = -TD / 2;
+  const pts = [
+    g0, new THREE.Vector3(g0.x, hY, -0.3), new THREE.Vector3(-0.05, hY, zb - 0.03),
+    new THREE.Vector3(-0.05, lerp(hY, sY, 0.5), zb - 0.16), new THREE.Vector3(-0.02, sY, zb - 0.02),
+    new THREE.Vector3(0, sY, -0.15), new THREE.Vector3(0.02, sY, zb - 0.02),
+    new THREE.Vector3(0.05, lerp(sY, tY, 0.5), zb - 0.16), new THREE.Vector3(0.05, tY, zb - 0.03),
+    new THREE.Vector3(0.1, tY, -0.25), new THREE.Vector3(0.12, tY, 0.0),
+  ];
+  tokenCurve = new THREE.CatmullRomCurve3(pts, false, 'catmullrom', 0.3);
+  pathMesh = new THREE.Mesh(new THREE.TubeGeometry(tokenCurve, 240, 0.0045, 8), pathMat);
+  // the path runs behind translucent trays; draw it (and the token) last so they stay on top
+  pathMesh.renderOrder = 10; pathMat.depthTest = false;
+  tokenSprites.forEach((sp) => { sp.renderOrder = 11; });
+  scene.add(pathMesh);
+  targetGlow.position.set(0, tY, 0);
+}
+const camPos = new THREE.Vector3(), camTgt = new THREE.Vector3();
+function poseCamera(s, yaw = 0) {
+  const k = Math.min(4, Math.floor(s)), f = sm(clamp01(s - k));
+  const a = POSES[k], b = POSES[Math.min(5, k + 1)];
+  camTgt.lerpVectors(a.t, b.t, f);
+  camPos.lerpVectors(a.p, b.p, f);
+  // fly in a gentle arc rather than a straight line when the distance changes a lot
+  const d0 = a.p.distanceTo(a.t), d1 = b.p.distanceTo(b.t);
+  const dir = camPos.clone().sub(camTgt).normalize();
+  // portrait screens need extra distance for the wide close-ups (tray, superchip)
+  const asp = camera.aspect, close = clamp01(s - 1) * clamp01(4.6 - s);
+  const dist = Math.exp(lerp(Math.log(d0), Math.log(d1), f)) * (asp < 0.8 ? 1 + 0.3 * close : 1);
+  camPos.copy(camTgt).addScaledVector(dir, dist);
+  if (yaw) { camPos.sub(camTgt).applyAxisAngle(new THREE.Vector3(0, 1, 0), yaw).add(camTgt); }
+  camera.position.copy(camPos); camera.lookAt(camTgt);
+}
+
+// ---------- labels ----------
+const LABELS = [];
+const labelsEl = document.getElementById('labels');
+function label(step, anchor, title, sub, opts = {}) {
+  const el = document.createElement('div'); el.className = 'lbl' + (opts.left ? ' left' : '');
+  el.innerHTML = `<div class="dot"></div><div class="ln"></div><div class="tx"><b>${title}</b>${sub ? `<i>${sub}</i>` : ''}</div>`;
+  labelsEl.appendChild(el);
+  LABELS.push({ step, anchor, el, left: !!opts.left, offset: opts.offset || new THREE.Vector3() });
+}
+function anchorAt(parent, x, y, z) { const o = new THREE.Object3D(); o.position.set(x, y, z); parent.add(o); return o; }
+
+function buildLabels() {
+  label(0, anchorAt(rack, 0.2, slotY(4), RD / 2 - 0.05), '72 Rubin GPUs + 36 Vera CPUs', 'one rack, 1,296 chips');
+  label(0, anchorAt(rack, -0.27, 0.5, -RD / 2 + 0.03), 'Liquid cooling', 'water in at 45 °C', { left: true });
+  label(1, anchorAt(trays[3].g, 0.2, 0, TD / 2), '18 compute trays', '4 GPUs each');
+  label(1, anchorAt(trays[switchSlots[4]].g, -0.22, 0, TD / 2), '9 NVLink switch trays', 'the switchboard', { left: true });
+  label(1, anchorAt(trays[0].g, -0.2, 0, TD / 2), 'Power shelves', '', { left: true });
+  label(2, anchorAt(superchips[1], 0.05, 0.02, -0.12), '2 superchips', '1 CPU + 2 GPUs each');
+  label(2, anchorAt(superchips[1].userData.plates[1], 0.03, 0.006, 0), 'Cold plates', 'water-cooled, no fans', { left: false });
+  label(2, anchorAt(nics[0], 0, 0.02, 0), 'ConnectX-9 SuperNICs', 'link to other racks', { left: true });
+  label(2, anchorAt(bluefield, 0, 0.012, 0), 'BlueField-4 DPU', 'runs networking + security');
+  label(3, anchorAt(superchips[0].userData.cpu, 0, 0.006, 0), 'Vera CPU', '88 cores · 176 threads');
+  label(3, anchorAt(superchips[0].userData.gpus[1], -0.03, 0.007, -0.02), 'Rubin GPU ×2', '50 PFLOPS NVFP4 each', { left: true });
+  label(3, anchorAt(superchips[0], 0.04, 0.004, 0.105), 'NVLink-C2C', '1.8 TB/s CPU to GPU');
+  label(3, anchorAt(superchips[0].userData.socamm[0], 0, 0.003, 0), 'LPDDR5X memory', 'up to 1.5 TB', { left: true });
+  const g = superchips[0].userData.gpus[0];
+  label(4, anchorAt(g.userData.dies[1], 0.004, 0.001, -0.008), '2 compute dies', '336B transistors · 224 SMs');
+  label(4, anchorAt(g.userData.stacks[1], 0, 0.012, 0), 'HBM4 stacks', '288 GB · 19.2 TB/s', { left: true });
+  label(5, anchorAt(spine, 0, 1.25, -RD / 2 + 0.035), 'NVLink spine', 'copper, at the back', { left: true });
+  label(5, anchorAt(trays[switchSlots[4]].g, 0, 0, -0.15), '36 switch chips', 'every GPU to every GPU', { left: true });
+  label(5, anchorAt(trays[TARGET].g, 0.12, 0, 0.0), 'Arrives in 1 hop', 'any GPU → any GPU');
+}
+const projV = new THREE.Vector3();
+function updateLabels(s, W, H) {
+  for (const L of LABELS) {
+    let w = clamp01(1 - Math.abs(s - L.step) * 2.4);
+    if (L.step === 5) w = clamp01((s - 4.75) * 4);
+    if (w <= 0.001) { L.el.style.opacity = 0; continue; }
+    L.anchor.updateWorldMatrix(true, false);
+    projV.setFromMatrixPosition(L.anchor.matrixWorld).project(camera);
+    if (projV.z > 1) { L.el.style.opacity = 0; continue; }
+    const x = (projV.x * 0.5 + 0.5) * W, y = (-projV.y * 0.5 + 0.5) * H;
+    // flip the label to the other side when its text would run off screen
+    if (!L.tw) L.tw = L.el.querySelector('.tx').offsetWidth + 36;
+    const left = L.left ? x - L.tw > 6 || x + L.tw > W - 6 : x + L.tw > W - 6 && x - L.tw > 6;
+    L.el.classList.toggle('left', left);
+    L.el.style.transform = `translate3d(${x.toFixed(1)}px,${y.toFixed(1)}px,0)`;
+    L.el.style.opacity = w.toFixed(3);
+  }
+}
+
+// ---------- post ----------
+const composer = new EffectComposer(renderer);
+composer.addPass(new RenderPass(scene, camera));
+const bloom = new UnrealBloomPass(new THREE.Vector2(512, 512), 0.55, 0.45, 0.78);
+composer.addPass(bloom);
+composer.addPass(new OutputPass());
+
+let W = 1, H = 1;
+function resize() {
+  W = innerWidth; H = innerHeight;
+  renderer.setSize(W, H, false); composer.setSize(W, H);
+  bloom.resolution.set(W / 2, H / 2);
+  camera.aspect = W / H;
+  // keep the subject in frame on tall phone screens
+  camera.fov = W / H < 0.8 ? 52 : W / H < 1.2 ? 44 : 35;
+  camera.updateProjectionMatrix();
+}
+addEventListener('resize', resize);
+
+function tokenFrame(time) {
+  if (!tokenCurve) return;
+  const period = 2.6, u = (time % period) / period;
+  tokenSprites.forEach((sp, i) => {
+    const uu = u - i * 0.012;
+    sp.visible = uu >= 0 && uu <= 1;
+    if (!sp.visible) return;
+    tokenCurve.getPointAt(uu, sp.position);
+    const sz = (i === 0 ? 0.11 : 0.075) * (1 - i / tokenSprites.length);
+    sp.scale.set(sz, sz, 1);
+    sp.material.opacity = 1 - i / tokenSprites.length;
+  });
+  targetGlow.material.opacity = token.visible ? 0.5 * Math.max(0, 1 - Math.abs(u - 0.97) * 12) : 0;
+}
+
+// ---------- build ----------
+buildPoses();
+buildLabels();
+resize();
+
+// ---------- interactive mode ----------
+const stepsEl = document.getElementById('steps'), range = document.getElementById('range');
+const stEl = document.getElementById('st'), spEl = document.getElementById('sp'), specsEl = document.getElementById('specs');
+STEPS.forEach((st, i) => {
+  const b = document.createElement('button'); b.innerHTML = `${st.name}<span>${st.sub}</span>`;
+  b.onclick = () => window.goTo(i); stepsEl.appendChild(b);
+});
+let shownStep = -1;
+function showStep(i) {
+  if (i === shownStep) return; shownStep = i;
+  const st = STEPS[i]; stEl.textContent = st.title; spEl.textContent = st.text;
+  specsEl.innerHTML = st.specs.map(([k, v]) => `<dt>${k}</dt><dd>${v}</dd>`).join('');
+  [...stepsEl.children].forEach((b, k) => b.classList.toggle('on', k === i));
+}
+
+if (!DEMO) {
+  const controls = new OrbitControls(camera, canvas);
+  controls.enableDamping = true; controls.dampingFactor = 0.08; controls.enablePan = false;
+  controls.minDistance = 0.08; controls.maxDistance = 9;
+  let s = 0, tw = null, userMoved = false;
+  controls.addEventListener('start', () => { userMoved = true; });
+  function goTo(i) { tw = { from: s, to: i, t0: performance.now(), dur: 1500 + 300 * Math.abs(i - s) }; userMoved = false; }
+  window.goTo = goTo;
+  range.addEventListener('input', () => { tw = null; s = Number(range.value); userMoved = false; });
+  addEventListener('keydown', (e) => {
+    if (e.key === 'ArrowRight') goTo(Math.min(5, Math.round(s) + 1));
+    if (e.key === 'ArrowLeft') goTo(Math.max(0, Math.round(s) - 1));
+  });
+  showStep(0);
+  poseCamera(0); controls.target.copy(camTgt);
+  const t0 = performance.now();
+  renderer.setAnimationLoop(() => {
+    const now = performance.now();
+    if (tw) {
+      const f = clamp01((now - tw.t0) / tw.dur);
+      s = lerp(tw.from, tw.to, f < 0.5 ? 4 * f * f * f : 1 - Math.pow(-2 * f + 2, 3) / 2);
+      if (f >= 1) { s = tw.to; tw = null; }
+      range.value = s;
+    }
+    applyPose(s);
+    if (!userMoved) { poseCamera(s); controls.target.copy(camTgt); }
+    controls.update();
+    tokenFrame((now - t0) / 1000);
+    showStep(Math.round(s));
+    composer.render();
+    updateLabels(s, W, H);
+  });
+} else {
+  // ---------- demo mode: deterministic frames for the video via window.renderAt(t) ----------
+  const KEYS = [[0, 1], [2.6, 1], [4.0, 0], [6.6, 0], [8.2, 1], [10.6, 1], [12.4, 2], [15.0, 2], [16.8, 3], [19.6, 3], [21.6, 4], [24.8, 4], [27.0, 5], [33, 5]];
+  const CAPS = [
+    [0, 4.0, 'I asked Droid how an <em>AI supercomputer</em> works', 'It built one I can take apart.'],
+    [4.0, 8.2, 'One rack. <em>72 GPUs</em>, 36 CPUs, 1,296 chips.', 'NVIDIA Vera Rubin NVL72'],
+    [8.2, 12.4, '<em>18 compute trays</em> + 9 switch trays', 'They slide in like drawers.'],
+    [12.4, 16.8, 'One tray: <em>no fans</em>, no cables', 'Water at 45 °C cools every chip.'],
+    [16.8, 21.6, '1 CPU feeds 2 GPUs at <em>1.8 TB/s</em>', 'The superchip'],
+    [21.6, 27.0, '<em>336 billion</em> transistors', '+ 288 GB of memory stacked like pancakes'],
+    [27.0, 30.6, 'Any GPU reaches any other in <em>one hop</em>', '36 switch chips, 216 TB/s'],
+    [30.6, 33, 'Take it apart yourself', 'One HTML file. Built by Droid.'],
+  ];
+  const DUR = 33;
+  const progEl = document.getElementById('prog');
+  const bars = STEPS.map(() => { const i = document.createElement('i'); i.innerHTML = '<b></b>'; progEl.appendChild(i); return i.firstChild; });
+  const capEl = document.getElementById('cap');
+  function sAt(t) {
+    for (let i = 0; i < KEYS.length - 1; i++) {
+      const [ta, sa] = KEYS[i], [tb, sb] = KEYS[i + 1];
+      if (t <= tb) { const f = clamp01((t - ta) / (tb - ta)); const e = f < 0.5 ? 4 * f * f * f : 1 - Math.pow(-2 * f + 2, 3) / 2; return lerp(sa, sb, e); }
+    }
+    return KEYS[KEYS.length - 1][1];
+  }
+  let lastCap = '';
+  window.renderAt = (t) => {
+    const s = sAt(t);
+    applyPose(s);
+    poseCamera(s, 0.22 * Math.sin(t * 0.21) - 0.05);
+    tokenFrame(Math.max(0, t - 27));
+    const c = CAPS.find(([a, b]) => t >= a && t < b) || CAPS[CAPS.length - 1];
+    const html = `<span class="t">${c[2]}<span class="s">${c[3]}</span></span>`;
+    if (html !== lastCap) { capEl.innerHTML = html; lastCap = html; }
+    const ca = Math.min(clamp01((t - c[0]) / 0.25), clamp01((c[1] - t) / 0.2 + (c === CAPS[CAPS.length - 1] ? 1 : 0)));
+    capEl.style.opacity = ca.toFixed(3);
+    bars.forEach((b, i) => { b.style.width = (clamp01(s - i + 1) * 100).toFixed(1) + '%'; });
+    composer.render();
+    updateLabels(s, W, H);
+  };
+  window.demoInfo = { duration: DUR, fps: 30, keys: KEYS, caps: CAPS.map((c) => c.slice(0, 2)) };
+  window.renderAt(0);
+  window.ready = true;
+}
+</script>
+</body>
+</html>
